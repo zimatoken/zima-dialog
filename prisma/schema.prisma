@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?
+  name      String?
+  avatar    String?
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  devices   Device[]
+  chatMembers ChatMember[]
+  messages  Message[]
+}
+
+model Device {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  token        String?
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  name      String?
+  type      String   @default("DIRECT") // "DIRECT" | "GROUP"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members   ChatMember[]
+  messages  Message[]
+}
+
+model ChatMember {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // "OWNER" | "ADMIN" | "MEMBER"
+  joinedAt  DateTime @default(now())
+  
+  @@unique([userId, chatId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  text        String
+  type        String   @default("TEXT") // "TEXT" | "IMAGE" | "FILE" | "SYSTEM"
+  
+  // Relations
+  chatId      String
+  chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Reply
+  replyToId   String?
+  replyTo     Message? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies     Message[] @relation("MessageReplies")
+  
+  // Status (храним как строку)
+  status      String?  // JSON как строка
+  
+  // Attachments (храним как строку)
+  attachments String?  // JSON как строка
+  
+  // Flags
+  isEdited    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([chatId])
+  @@index([authorId])
+  @@index([createdAt])
+}

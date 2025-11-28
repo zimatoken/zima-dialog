@@ -1,0 +1,27 @@
+import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
+
+export const apiClient = axios.create({
+  baseURL: '/v0',
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().session?.accessToken;
+  if (token) {
+    // eslint-disable-next-line no-param-reassign
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearSession();
+    }
+    return Promise.reject(error);
+  },
+);
+
+
